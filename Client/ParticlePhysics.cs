@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -29,8 +30,10 @@ namespace Vintagestory.API.Client
         CollideZ = 4
     }
 
-    public class ParticlePhysics
+    public partial class ParticlePhysics
     {
+        public static bool UseVectorImplementation = false;
+
         public IBlockAccessor BlockAccess;
 
 
@@ -130,10 +133,25 @@ namespace Vintagestory.API.Client
         /// <param name="motion"></param>
         /// <param name="size"></param>
         /// <returns></returns>
+        [MethodImpl(MethodImplOptions.NoInlining)]
         public EnumCollideFlags UpdateMotion(Vec3d pos, Vec3f motion, float size)
         {
+            if (UseVectorImplementation) {
+                //SIMDVec4f motionVec = motion.ToSIMD();
+                //SIMDVec4d posVec = pos.ToSIMD();
+                //EnumCollideFlags collision =  UpdateMotionSIMDVec(posVec, ref motionVec, size);
+                FastVec4f motionVec = motion.ToSIMD();
+                FastVec4d posVec = pos.ToSIMD();
+                EnumCollideFlags collision =  UpdateMotionFastVec(posVec, ref motionVec, size);
+                if (collision != 0) {
+                    motion.X = motionVec.X;
+                    motion.Y = motionVec.Y;
+                    motion.Z = motionVec.Z;
+                }
+                return collision;
+            }
             particleCollBox.Set(
-                pos.X - size / 2, pos.Y - 0/2, pos.Z - size / 2, 
+                pos.X - size / 2, pos.Y - 0/2, pos.Z - size / 2,
                 pos.X + size / 2, pos.Y + size/2, pos.Z + size / 2
             );
 
